@@ -22,9 +22,9 @@ namespace ExcelReportGen
             {
                 var newRow = new Row();
                 newRow.Append(
-                    CreateCell(_faker.Random.Int(0 - 10000).ToString(), CellValues.String),
+                    CreateCell(_faker.Random.Int(0,99999).ToString(), CellValues.Number),
                     CreateCell(_faker.Name.FullName(), CellValues.String),
-                    CreateCell(_faker.Phone.PhoneNumber(), CellValues.Number),
+                    CreateCell(_faker.Phone.PhoneNumberFormat(1), CellValues.Number),
                     CreateCell(_faker.Date.Past(2).ToShortDateString(), CellValues.String),
                     CreateCell(_faker.Random.Int(10, 39).ToString(), CellValues.Number)
                 );
@@ -35,11 +35,32 @@ namespace ExcelReportGen
 
         private static Cell CreateCell(string value, CellValues dataType)
         {
-            return new Cell
+            var cell = new Cell();
+
+            if (dataType == CellValues.Number)
             {
-                CellValue = new CellValue(value),
-                DataType = new EnumValue<CellValues>(dataType)
-            };
+                // Ensure numeric values are properly formatted
+                if (double.TryParse(value, out double numericValue))
+                {
+                    cell.CellValue = new CellValue(numericValue.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                    cell.DataType = new EnumValue<CellValues>(CellValues.Number);
+                }
+                else
+                {
+                    // Fallback to string if parsing fails
+                    cell.CellValue = new CellValue(value);
+                    cell.DataType = new EnumValue<CellValues>(CellValues.String);
+                }
+            }
+            else
+            {
+                // Handle string values correctly
+                cell.CellValue = new CellValue(value);
+                cell.DataType = new EnumValue<CellValues>(CellValues.String);
+            }
+
+            return cell;
         }
+
     }
 }

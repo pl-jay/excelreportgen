@@ -1,4 +1,5 @@
-﻿using DocumentFormat.OpenXml.Packaging;
+﻿using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
 using System;
 using System.Collections.Generic;
@@ -12,38 +13,50 @@ namespace ExcelReportGen
     {
         public static Task GenerateReport(string templatePath, string outputPath, int rowCount)
         {
-            using (SpreadsheetDocument document = SpreadsheetDocument.Open(templatePath, false))
+            try
             {
-                var workbookPart = document.WorkbookPart;
-                if (workbookPart == null)
+                // Ensure the output directory exists
+                string directory = Path.GetDirectoryName(outputPath) ?? "";
+                if (!Directory.Exists(directory) && !string.IsNullOrEmpty(directory))
                 {
-                    throw new InvalidOperationException("WorkbookPart is null.");
-                }
-                var sheet = workbookPart.Workbook.Descendants<Sheet>().FirstOrDefault();
-                if (sheet == null)
-                {
-                    throw new InvalidOperationException("No sheets found in the template.");
+                    Directory.CreateDirectory(directory);
                 }
 
-                // Copy the template to create the output file
-                File.Copy(templatePath, outputPath, true);
-
-                // Open the output file for modification
-                using (SpreadsheetDocument outputDoc = SpreadsheetDocument.Open(outputPath, true))
+                // Create a new Excel file
+                using (SpreadsheetDocument document = SpreadsheetDocument.Create(outputPath, SpreadsheetDocumentType.Workbook))
                 {
-                    var outputWorkbookPart = outputDoc.WorkbookPart;
-                    if (outputWorkbookPart != null)
+                    // Add a workbook part to the document
+                    var workbookPart = document.AddWorkbookPart();
+                    workbookPart.Workbook = new Workbook();
+
+                    // Add a worksheet part to the workbook
+                    var worksheetPart = workbookPart.AddNewPart<WorksheetPart>();
+                    var sheetData = new SheetData();
+                    worksheetPart.Worksheet = new Worksheet(sheetData);
+
+                    // Create Sheets collection
+                    var sheets = workbookPart.Workbook.AppendChild(new Sheets());
+                    var sheet = new Sheet()
                     {
-                        var outputSheet = outputWorkbookPart.Workbook.Descendants<Sheet>().FirstOrDefault();
-                        if (outputSheet != null && outputSheet.Id != null)
-                        {
-                            var worksheetPart = (WorksheetPart)outputWorkbookPart.GetPartById(outputSheet.Id);
-                            DataGeneration.InsertDataRows(worksheetPart, rowCount);
-                        }
+                        Id = workbookPart.GetIdOfPart(worksheetPart),
+                        SheetId = 1,
+                        Name = "Report"
+                    };
+                    sheets.Append(sheet);
 
-                        outputWorkbookPart.Workbook.Save();
-                    }
+                    // Insert data into the new sheet
+                    DataGeneration.InsertDataRows(worksheetPart, rowCount);
+
+                    // Save the workbook
+                    worksheetPart.Worksheet.Save();
+                    workbookPart.Workbook.Save();
                 }
+
+                Console.WriteLine($"Report successfully generated: {outputPath}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error while generating report: {ex.Message}");
             }
 
             return Task.CompletedTask;
