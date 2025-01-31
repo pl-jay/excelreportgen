@@ -140,7 +140,7 @@ namespace ExcelReportGenerator
         private static string GenerateOutputFilePath(string templatePath)
         {
             string directory = Path.GetDirectoryName(templatePath) ?? "";
-            string fileName = Path.GetFileNameWithoutExtension(templatePath);
+            string fileName  = Path.GetFileNameWithoutExtension(templatePath);
             string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
             return Path.Combine(directory, $"{fileName}_{timestamp}.xlsx");
         }
